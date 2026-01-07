@@ -1,0 +1,85 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Grid parameters
+GRID_SIZE = 5
+GOAL_STATE = (4, 4)
+GAMMA = 0.9
+THETA = 1e-4
+
+ACTIONS = {
+    0: (-1, 0),  # Up
+    1: (1, 0),   # Down
+    2: (0, -1),  # Left
+    3: (0, 1)    # Right
+}
+
+# Reward function
+def reward(state):
+    return 10 if state == GOAL_STATE else -1
+
+# Check valid state
+def is_valid(state):
+    x, y = state
+    return 0 <= x < GRID_SIZE and 0 <= y < GRID_SIZE
+
+# Policy evaluation
+def policy_evaluation(policy):
+    V = np.zeros((GRID_SIZE, GRID_SIZE))
+    
+    while True:
+        delta = 0
+        for i in range(GRID_SIZE):
+            for j in range(GRID_SIZE):
+                state = (i, j)
+                if state == GOAL_STATE:
+                    continue
+                
+                v = 0
+                for a, prob in policy.items():
+                    dx, dy = ACTIONS[a]
+                    next_state = (i + dx, j + dy)
+                    
+                    if not is_valid(next_state):
+                        next_state = state
+                    
+                    v += prob * (reward(next_state) + GAMMA * V[next_state])
+                
+                delta = max(delta, abs(V[state] - v))
+                V[state] = v
+        
+        if delta < THETA:
+            break
+    
+    return V
+
+# Random policy
+random_policy = {a: 0.25 for a in ACTIONS}
+
+# Goal-directed policy (biased towards goal)
+goal_policy = {
+    0: 0.1,  # Up
+    1: 0.4,  # Down
+    2: 0.1,  # Left
+    3: 0.4   # Right
+}
+
+# Evaluate policies
+V_random = policy_evaluation(random_policy)
+V_goal = policy_evaluation(goal_policy)
+
+# Visualization
+plt.figure(figsize=(12, 5))
+
+plt.subplot(1, 2, 1)
+plt.title("Value Function - Random Policy")
+plt.imshow(V_random, cmap='viridis')
+plt.colorbar()
+
+plt.subplot(1, 2, 2)
+plt.title("Value Function - Goal Directed Policy")
+plt.imshow(V_goal, cmap='viridis')
+plt.colorbar()
+
+plt.show()
+
