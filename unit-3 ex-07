@@ -1,0 +1,89 @@
+import random
+import math
+import matplotlib.pyplot as plt
+
+# Environment
+WIDTH, HEIGHT = 100, 100
+START = (5, 5)
+TARGETS = [(80, 20), (20, 80), (80, 80)]
+
+OBSTACLES = [
+    (25, 25, 20, 15),
+    (60, 10, 20, 25),
+    (40, 60, 30, 20)
+]
+
+STEP_SIZE = 4
+MAX_ITER = 2500
+
+class Node:
+    def __init__(self, x, y, parent=None, cost=0):
+        self.x = x
+        self.y = y
+        self.parent = parent
+        self.cost = cost
+
+def collision(x, y):
+    for ox, oy, w, h in OBSTACLES:
+        if ox <= x <= ox + w and oy <= y <= oy + h:
+            return True
+    return False
+
+def steer(from_node, to_point):
+    theta = math.atan2(to_point[1] - from_node.y, to_point[0] - from_node.x)
+    nx = from_node.x + STEP_SIZE * math.cos(theta)
+    ny = from_node.y + STEP_SIZE * math.sin(theta)
+    return Node(nx, ny, from_node, from_node.cost + STEP_SIZE)
+
+def nearest(tree, point):
+    return min(tree, key=lambda n: math.hypot(n.x - point[0], n.y - point[1]))
+
+def rrt_star(goal, start):
+    tree = [Node(*start)]
+    for _ in range(MAX_ITER):
+        rand = (random.uniform(0, WIDTH), random.uniform(0, HEIGHT))
+        near = nearest(tree, rand)
+        new = steer(near, rand)
+
+        if not collision(new.x, new.y):
+            neighbors = [n for n in tree if math.hypot(n.x - new.x, n.y - new.y) < 15]
+            for n in neighbors:
+                cost = n.cost + math.hypot(n.x - new.x, n.y - new.y)
+                if cost < new.cost:
+                    new.parent = n
+                    new.cost = cost
+
+            tree.append(new)
+
+            if math.hypot(new.x - goal[0], new.y - goal[1]) < STEP_SIZE:
+                return Node(*goal, new, new.cost)
+    return None
+
+paths = []
+current_start = START
+
+for target in TARGETS:
+    goal_node = rrt_star(target, current_start)
+    px, py = [], []
+    while goal_node:
+        px.append(goal_node.x)
+        py.append(goal_node.y)
+        goal_node = goal_node.parent
+    paths.append((px, py))
+    current_start = target
+
+plt.figure(figsize=(8, 8))
+for ox, oy, w, h in OBSTACLES:
+    plt.gca().add_patch(plt.Rectangle((ox, oy), w, h))
+
+for px, py in paths:
+    plt.plot(px, py, linewidth=2)
+
+for t in TARGETS:
+    plt.scatter(*t, c='red')
+
+plt.scatter(*START, c='green')
+plt.xlim(0, WIDTH)
+plt.ylim(0, HEIGHT)
+plt.title("UAV Surveillance using RRT*")
+plt.show()
